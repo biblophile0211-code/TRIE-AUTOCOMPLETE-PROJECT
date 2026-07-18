@@ -8,37 +8,46 @@
 #include <cctype>
 using namespace std;
 
-struct TrieNode {
+struct TrieNode
+{
     unordered_map<char, TrieNode*> children;
     bool isEnd = false;
     int  freq  = 0;
 };
 
 
-class Trie {
+class Trie
+{
 public:
     TrieNode* root;
     int nodeCount = 1;
     int wordCount = 0;
 
-    Trie() { root = new TrieNode(); }
+    Trie()
+{ 
+    root = new TrieNode();
+}
 
     // INSERT
-    string insert(string word) {
+    string insert(string word)
+{
         for (char& c : word) c = tolower(c);
         if (word.empty()) return R"({"ok":false,"msg":"empty word"})";
         for (char c : word)
             if (!isalpha(c)) return R"({"ok":false,"msg":"letters only"})";
 
         TrieNode* node = root;
-        for (char c : word) {
-            if (!node->children.count(c)) {
+        for (char c : word)
+            {
+            if (!node->children.count(c))
+            {
                 node->children[c] = new TrieNode();
                 nodeCount++;
             }
             node = node->children[c];
         }
-        if (!node->isEnd) {
+        if (!node->isEnd)
+        {
             node->isEnd = true;
             node->freq  = 1;
             wordCount++;
@@ -49,7 +58,8 @@ public:
     }
 
     // DELETE
-    bool deleteWord(string word) {
+    bool deleteWord(string word)
+{
         for (char& c : word) c = tolower(c);
         bool found = false;
         function<bool(TrieNode*, int)> del = [&](TrieNode* node, int i) -> bool {
@@ -79,7 +89,8 @@ public:
     // SEARCH / AUTOCOMPLETE
     struct Result { string word; int freq; };
 
-    vector<Result> search(string prefix, int limit = 8) {
+    vector<Result> search(string prefix, int limit = 8)
+{
         for (char& c : prefix) c = tolower(c);
         vector<Result> results;
         TrieNode* node = root;
@@ -87,7 +98,8 @@ public:
             if (!node->children.count(c)) return results;
             node = node->children[c];
         }
-        function<void(TrieNode*, string)> dfs = [&](TrieNode* n, string path) {
+        function<void(TrieNode*, string)> dfs = [&](TrieNode* n, string path)
+        {
             if ((int)results.size() >= 50) return;
             if (n->isEnd) results.push_back({path, n->freq});
             for (auto& p : n->children) {
@@ -97,7 +109,8 @@ public:
 }
         };
         dfs(node, prefix);
-        sort(results.begin(), results.end(), [](const Result& a, const Result& b) {
+        sort(results.begin(), results.end(), [](const Result& a, const Result& b)
+            {
             return a.freq != b.freq ? a.freq > b.freq : a.word < b.word;
         });
         if ((int)results.size() > limit) results.resize(limit);
@@ -105,18 +118,22 @@ public:
     }
 
     // GET ALL WORDS
-    vector<Result> getAllWords() {
+    vector<Result> getAllWords()
+{
         vector<Result> words;
-        function<void(TrieNode*, string)> dfs = [&](TrieNode* n, string path) {
+        function<void(TrieNode*, string)> dfs = [&](TrieNode* n, string path)
+        {
             if (n->isEnd) words.push_back({path, n->freq});
-            for (auto& p : n->children) {
+            for (auto& p : n->children)
+                {
     char ch = p.first;
     TrieNode* child = p.second;
     dfs(child, path + ch);
 }
         };
         dfs(root, "");
-        sort(words.begin(), words.end(), [](const Result& a, const Result& b) {
+        sort(words.begin(), words.end(), [](const Result& a, const Result& b)
+            {
             return a.word < b.word;
         });
         return words;
@@ -130,9 +147,11 @@ public:
     }
 };
 
-string escapeJson(const string& s) {
+string escapeJson(const string& s)
+{
     string r;
-    for (char c : s) {
+    for (char c : s)
+        {
         if (c == '"') r += "\\\"";
         else if (c == '\\') r += "\\\\";
         else r += c;
@@ -140,10 +159,12 @@ string escapeJson(const string& s) {
     return r;
 }
 
-string resultsToJson(const vector<Trie::Result>& v) {
+string resultsToJson(const vector<Trie::Result>& v)
+{
     ostringstream oss;
     oss << "[";
-    for (int i = 0; i < (int)v.size(); i++) {
+    for (int i = 0; i < (int)v.size(); i++)
+        {
         if (i) oss << ",";
         oss << "{\"word\":\"" << escapeJson(v[i].word)
             << "\",\"freq\":" << v[i].freq << "}";
@@ -152,7 +173,8 @@ string resultsToJson(const vector<Trie::Result>& v) {
     return oss.str();
 }
 
-int main() {
+int main()
+{
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
 
@@ -172,7 +194,8 @@ int main() {
     for (auto& w : defaults) trie.insert(w);
 
     string line;
-    while (getline(cin, line)) {
+    while (getline(cin, line))
+        {
         if (line.empty()) { cout << "{}\n"; cout.flush(); continue; }
 
         istringstream iss(line);
@@ -180,25 +203,31 @@ int main() {
         string arg; getline(iss, arg);
         if (!arg.empty() && arg[0] == ' ') arg = arg.substr(1);
 
-        if (cmd == "INSERT") {
+        if (cmd == "INSERT")
+        {
             cout << trie.insert(arg) << "\n";
         }
-        else if (cmd == "DELETE") {
+        else if (cmd == "DELETE") 
+        {
             bool ok = trie.deleteWord(arg);
             cout << (ok ? R"({"ok":true})" : R"({"ok":false,"msg":"word not found"})") << "\n";
         }
-        else if (cmd == "SEARCH") {
+        else if (cmd == "SEARCH")
+        {
             auto r = trie.search(arg);
             cout << resultsToJson(r) << "\n";
         }
-        else if (cmd == "ALL") {
+        else if (cmd == "ALL") 
+        {
             auto r = trie.getAllWords();
             cout << resultsToJson(r) << "\n";
         }
-        else if (cmd == "STATS") {
+        else if (cmd == "STATS") 
+        {
             cout << trie.getStats() << "\n";
         }
-        else {
+        else 
+        {
             cout << R"({"error":"unknown command"})" << "\n";
         }
         cout.flush();
