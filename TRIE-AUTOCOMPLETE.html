@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trie Autocomplete System — DSA Final Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --bg2:       #161b22;
+    --bg3:       #21262d;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --teal:      #1D9E75;
+    --teal-lt:   #5DCAA5;
+    --teal-dark: #0F6E56;
+    --teal-bg:   #0d2d22;
+    --accent:    #58a6ff;
+    --red:       #f85149;
+    --red-bg:    #2d1b1b;
+    --yellow:    #e3b341;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--teal); }
+
+  .badge {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--teal-bg);
+    color: var(--teal-lt);
+    border: 1px solid var(--teal-dark);
+    padding: 3px 10px;
+    border-radius: 99px;
+  }
+
+  /* ── LAYOUT ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 20px;
+  }
+
+  @media (max-width: 720px) {
+    .container { grid-template-columns: 1fr; }
+    .full-width { grid-column: 1 !important; }
+  }
+
+  .full-width { grid-column: 1 / -1; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: var(--teal);
+    border-radius: 50%;
+  }
+
+  /* ── STATS ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  .stat {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-size: 28px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--teal);
+    line-height: 1;
+  }
+
+  .stat-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── SEARCH ── */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 14px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 18px;
+    pointer-events: none;
+  }
+
+  #searchInput {
+    width: 100%;
+    padding: 14px 16px 14px 42px;
+    font-size: 20px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    background: var(--bg3);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: 0.3px;
+  }
+
+  #searchInput:focus { border-color: var(--teal); }
+  #searchInput::placeholder { color: var(--muted); font-weight: 400; }
+
+  .shortcut-hint {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    text-align: right;
+    margin-bottom: 8px;
+  }
+
+  kbd {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+  }
+
+  /* ── SUGGESTIONS ── */
+  .suggestions { display: flex; flex-direction: column; gap: 5px; min-height: 56px; }
+
+  .suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    transition: all 0.1s;
+    user-select: none;
+  }
+
+  .suggestion-item:hover,
+  .suggestion-item.active {
+    background: var(--teal-bg);
+    border-color: var(--teal-dark);
+  }
+
+  .sug-rank {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    min-width: 18px;
+  }
+
+  .sug-text { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 15px; }
+  .sug-prefix { color: var(--teal-lt); font-weight: 700; }
+  .sug-rest { color: var(--text); }
+
+  .sug-freq {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--teal-bg);
+    color: var(--teal-lt);
+    border: 1px solid var(--teal-dark);
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  .sug-enter {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .suggestion-item:hover .sug-enter,
+  .suggestion-item.active .sug-enter { opacity: 1; }
+
+  .empty-state {
+    text-align: center;
+    padding: 18px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── ADD / DELETE ── */
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .add-row input {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .add-row input:focus { border-color: var(--teal); }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-add {
+    background: var(--teal);
+    color: #fff;
+    border-color: var(--teal-dark);
+  }
+
+  .btn-add:hover { background: var(--teal-dark); }
+
+  .btn-del {
+    background: var(--red-bg);
+    color: var(--red);
+    border-color: #5a2020;
+  }
+
+  .btn-del:hover { background: #3d1515; }
+
+  .btn-clear {
+    background: var(--bg3);
+    color: var(--muted);
+    border-color: var(--border);
+  }
+
+  .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── WORD CHIPS ── */
+  .chip-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 160px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .chip-wrap::-webkit-scrollbar { width: 4px; }
+  .chip-wrap::-webkit-scrollbar-track { background: transparent; }
+  .chip-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    transition: border-color 0.1s;
+  }
+
+  .chip:hover { border-color: var(--red); }
+
+  .chip-f {
+    font-size: 10px;
+    color: var(--teal-lt);
+    background: var(--teal-bg);
+    padding: 1px 6px;
+    border-radius: 99px;
+  }
+
+  .chip-x {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.1s;
+  }
+
+  .chip-x:hover { color: var(--red); }
+
+  /* ── TRIE VISUALIZER ── */
+  .trie-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 12px 8px;
+  }
+
+  .trie-container::-webkit-scrollbar { height: 6px; }
+  .trie-container::-webkit-scrollbar-track { background: transparent; }
+  .trie-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  #trieSvg { display: block; }
+
+  /* ── COMPLEXITY ── */
+  .complexity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  @media (max-width: 480px) { .complexity-grid { grid-template-columns: 1fr; } }
+
+  .cx-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .cx-op {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .cx-val {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--yellow);
+  }
+
+  .cx-note { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg2);
+    border: 1px solid var(--teal-dark);
+    color: var(--teal-lt);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    z-index: 999;
+    box-shadow: 0 8px 32px #00000088;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Trie <span>Autocomplete</span></div>
+  <div class="badge">DSA Final — 4th Semester</div>
+</div>
+
+<div class="container">
+
+  <!-- STATS -->
+  <div class="full-width" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+    <div class="stat"><div class="stat-val" id="sWords">0</div><div class="stat-lbl">Total Words</div></div>
+    <div class="stat"><div class="stat-val" id="sNodes">1</div><div class="stat-lbl">Trie Nodes</div></div>
+    <div class="stat"><div class="stat-val" id="sPrefix">—</div><div class="stat-lbl">Prefix Length</div></div>
+    <div class="stat"><div class="stat-val" id="sMatches">0</div><div class="stat-lbl">Suggestions</div></div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card">
+    <div class="card-title">Search / Autocomplete</div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" type="text" placeholder="type a prefix..." autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="shortcut-hint"><kbd>↑</kbd> <kbd>↓</kbd> navigate &nbsp;·&nbsp; <kbd>Enter</kbd> select</div>
+    <div class="suggestions" id="suggestions">
+      <div class="empty-state">// start typing to see autocomplete...</div>
+    </div>
+  </div>
+
+  <!-- MANAGE -->
+  <div class="card">
+    <div class="card-title">Manage Dictionary</div>
+    <div class="add-row">
+      <input id="addInput" type="text" placeholder="enter word..." spellcheck="false" />
+      <button class="btn btn-add" id="addBtn">+ Add</button>
+      <button class="btn btn-del" id="delBtn">Delete</button>
+    </div>
+    <div class="add-row" style="margin-bottom:16px;">
+      <input id="bulkInput" type="text" placeholder="bulk add: word1, word2, word3 ..." spellcheck="false" />
+      <button class="btn btn-clear" id="bulkBtn">Bulk Add</button>
+    </div>
+    <div class="card-title" style="margin-bottom:10px;">Dictionary Words</div>
+    <div class="chip-wrap" id="wordChips"></div>
+  </div>
+
+  <!-- TRIE VISUALIZER -->
+  <div class="card full-width">
+    <div class="card-title">Trie Visualizer — live tree structure</div>
+    <div class="trie-container">
+      <svg id="trieSvg"></svg>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;font-family:'JetBrains Mono',monospace;">
+      ● highlighted = active prefix path &nbsp;·&nbsp; double-ring = end of word &nbsp;·&nbsp; ⊙ = root node
+    </p>
+  </div>
+
+  <!-- COMPLEXITY -->
+  <div class="card full-width">
+    <div class="card-title">Time &amp; Space Complexity Analysis</div>
+    <div class="complexity-grid">
+      <div class="cx-card"><div class="cx-op">Insert</div><div class="cx-val">O(L)</div><div class="cx-note">L = word length</div></div>
+      <div class="cx-card"><div class="cx-op">Search / Autocomplete</div><div class="cx-val">O(L + W)</div><div class="cx-note">W = matching words</div></div>
+      <div class="cx-card"><div class="cx-op">Delete</div><div class="cx-val">O(L)</div><div class="cx-note">L = word length</div></div>
+      <div class="cx-card"><div class="cx-op">Space (Trie)</div><div class="cx-val">O(A·L·N)</div><div class="cx-note">A=alphabet, N=words</div></div>
+      <div class="cx-card"><div class="cx-op">Prefix Match</div><div class="cx-val">O(L)</div><div class="cx-note">traverse to prefix node</div></div>
+      <div class="cx-card"><div class="cx-op">vs. Hash Map</div><div class="cx-val">O(P) faster</div><div class="cx-note">no full-scan needed</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">// Trie-Based Autocomplete System &nbsp;·&nbsp; Data Structures &amp; Algorithms &nbsp;·&nbsp; 4th Semester</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================================================
+   TRIE DATA STRUCTURE
+=================================================== */
+class TrieNode {
+  constructor() {
+    this.children = {};
+    this.isEnd   = false;
+    this.freq    = 0;
+  }
+}
+
+class Trie {
+  constructor() {
+    this.root      = new TrieNode();
+    this.nodeCount = 1;
+    this.wordCount = 0;
+  }
+
+  insert(word) {
+    word = word.toLowerCase().trim();
+    if (!word || !/^[a-z]+$/.test(word)) return { ok: false, msg: 'letters only (a-z)' };
+    let node = this.root;
+    for (const ch of word) {
+      if (!node.children[ch]) {
+        node.children[ch] = new TrieNode();
+        this.nodeCount++;
+      }
+      node = node.children[ch];
+    }
+    if (!node.isEnd) {
+      node.isEnd = true;
+      node.freq  = 1;
+      this.wordCount++;
+      return { ok: true, added: true };
+    }
+    node.freq++;
+    return { ok: true, added: false };
+  }
+
+  delete(word) {
+    word = word.toLowerCase().trim();
+    if (!word) return false;
+    let found = false;
+    const _del = (node, i) => {
+      if (i === word.length) {
+        if (!node.isEnd) return false;
+        node.isEnd = false;
+        node.freq  = 0;
+        found = true;
+        this.wordCount--;
+        return Object.keys(node.children).length === 0;
+      }
+      const ch = word[i];
+      if (!node.children[ch]) return false;
+      const shouldDel = _del(node.children[ch], i + 1);
+      if (shouldDel) {
+        delete node.children[ch];
+        this.nodeCount--;
+        return Object.keys(node.children).length === 0 && !node.isEnd;
+      }
+      return false;
+    };
+    _del(this.root, 0);
+    return found;
+  }
+
+  search(prefix, limit = 8) {
+    prefix = prefix.toLowerCase().trim();
+    if (!prefix) return [];
+    let node = this.root;
+    for (const ch of prefix) {
+      if (!node.children[ch]) return [];
+      node = node.children[ch];
+    }
+    const results = [];
+    const dfs = (n, path) => {
+      if (results.length >= 50) return;
+      if (n.isEnd) results.push({ word: path, freq: n.freq });
+      for (const ch of Object.keys(n.children).sort()) dfs(n.children[ch], path + ch);
+    };
+    dfs(node, prefix);
+    return results.sort((a, b) => b.freq - a.freq || a.word.localeCompare(b.word)).slice(0, limit);
+  }
+
+  getAllWords() {
+    const words = [];
+    const dfs = (node, path) => {
+      if (node.isEnd) words.push({ word: path, freq: node.freq });
+      for (const ch of Object.keys(node.children).sort()) dfs(node.children[ch], path + ch);
+    };
+    dfs(this.root, '');
+    return words;
+  }
+}
+
+/* ===================================================
+   INITIALISE WITH DEFAULT WORDS
+=================================================== */
+const trie = new Trie();
+const DEFAULTS = [
+  'algorithm','array','autocomplete','binary','branch','bubble',
+  'compiler','complexity','constant','data','delete','dijkstra',
+  'dynamic','edge','function','graph','greedy','hash','heap',
+  'index','insert','integer','leaf','linear','linked','list',
+  'logarithm','loop','merge','node','object','overflow','pointer',
+  'prefix','program','queue','quicksort','recursion','search',
+  'segment','sort','stack','string','structure','suffix',
+  'traverse','tree','trie','variable','vertex'
+];
+DEFAULTS.forEach(w => trie.insert(w));
+
+/* ===================================================
+   DOM REFS
+=================================================== */
+const searchInput = document.getElementById('searchInput');
+const suggestions = document.getElementById('suggestions');
+const addInput    = document.getElementById('addInput');
+const addBtn      = document.getElementById('addBtn');
+const delBtn      = document.getElementById('delBtn');
+const bulkInput   = document.getElementById('bulkInput');
+const bulkBtn     = document.getElementById('bulkBtn');
+const wordChips   = document.getElementById('wordChips');
+const trieSvg     = document.getElementById('trieSvg');
+const toast       = document.getElementById('toast');
+
+let selectedIdx  = -1;
+let toastTimeout = null;
+
+/* ===================================================
+   TOAST
+=================================================== */
+function showToast(msg, type = 'ok') {
+  toast.textContent = msg;
+  toast.style.borderColor = type === 'err' ? '#5a2020' : 'var(--teal-dark)';
+  toast.style.color       = type === 'err' ? 'var(--red)' : 'var(--teal-lt)';
+  toast.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+/* ===================================================
+   STATS
+=================================================== */
+function updateStats(sugCount) {
+  document.getElementById('sWords').textContent   = trie.wordCount;
+  document.getElementById('sNodes').textContent   = trie.nodeCount;
+  const p = searchInput.value.trim();
+  document.getElementById('sPrefix').textContent  = p ? p.length : '—';
+  document.getElementById('sMatches').textContent = sugCount ?? 0;
+}
+
+/* ===================================================
+   SUGGESTIONS
+=================================================== */
+function renderSuggestions(prefix) {
+  selectedIdx = -1;
+  if (!prefix) {
+    suggestions.innerHTML = '<div class="empty-state">// start typing to see autocomplete...</div>';
+    updateStats(0);
+    return;
+  }
+  const results = trie.search(prefix);
+  updateStats(results.length);
+  if (!results.length) {
+    suggestions.innerHTML = `<div class="empty-state">// no words found with prefix "<b style="color:var(--teal-lt)">${prefix}</b>"</div>`;
+    return;
+  }
+  suggestions.innerHTML = results.map((r, i) => {
+    const rest = r.word.slice(prefix.length);
+    return `<div class="suggestion-item" data-word="${r.word}" data-i="${i}">
+      <span class="sug-rank">${i + 1}</span>
+      <span class="sug-text">
+        <span class="sug-prefix">${escHtml(prefix)}</span><span class="sug-rest">${escHtml(rest)}</span>
+      </span>
+      <span class="sug-freq">${r.freq}×</span>
+      <span class="sug-enter">↵</span>
+    </div>`;
+  }).join('');
+
+  suggestions.querySelectorAll('.suggestion-item').forEach(el => {
+    el.addEventListener('click', () => selectWord(el.dataset.word));
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function selectWord(word) {
+  searchInput.value = word;
+  trie.insert(word);
+  renderSuggestions(word);
+  renderChips();
+  renderTrie();
+  searchInput.focus();
+}
+
+/* ===================================================
+   KEYBOARD NAVIGATION
+=================================================== */
+searchInput.addEventListener('keydown', e => {
+  const items = suggestions.querySelectorAll('.suggestion-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selectedIdx = Math.max(selectedIdx - 1, -1);
+  } else if (e.key === 'Enter') {
+    if (selectedIdx >= 0 && items[selectedIdx]) {
+      selectWord(items[selectedIdx].dataset.word);
+    }
+    return;
+  } else { return; }
+  items.forEach((el, i) => el.classList.toggle('active', i === selectedIdx));
+});
+
+searchInput.addEventListener('input', () => {
+  renderSuggestions(searchInput.value.trim());
+  renderTrie();
+});
+
+/* ===================================================
+   CHIPS
+=================================================== */
+function renderChips() {
+  const words = trie.getAllWords();
+  wordChips.innerHTML = words.map(w =>
+    `<div class="chip">
+      <span>${escHtml(w.word)}</span>
+      <span class="chip-f">${w.freq}×</span>
+      <span class="chip-x" data-word="${w.word}" title="delete">✕</span>
+    </div>`
+  ).join('');
+
+  wordChips.querySelectorAll('.chip-x').forEach(x => {
+    x.addEventListener('click', () => {
+      trie.delete(x.dataset.word);
+      renderChips();
+      renderSuggestions(searchInput.value.trim());
+      renderTrie();
+      showToast(`deleted: ${x.dataset.word}`, 'ok');
+    });
+  });
+}
+
+/* ===================================================
+   ADD / DELETE BUTTONS
+=================================================== */
+addBtn.addEventListener('click', () => {
+  const w = addInput.value.trim();
+  if (!w) return;
+  const r = trie.insert(w);
+  if (!r.ok) { showToast('⚠ ' + r.msg, 'err'); return; }
+  addInput.value = '';
+  renderChips();
+  renderSuggestions(searchInput.value.trim());
+  renderTrie();
+  showToast(r.added ? `✓ added: ${w}` : `freq++ : ${w}`);
+});
+
+addInput.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+
+delBtn.addEventListener('click', () => {
+  const w = (addInput.value || searchInput.value).trim().toLowerCase();
+  if (!w) { showToast('enter a word to delete', 'err'); return; }
+  const ok = trie.delete(w);
+  addInput.value = '';
+  renderChips();
+  renderSuggestions(searchInput.value.trim());
+  renderTrie();
+  showToast(ok ? `✓ deleted: ${w}` : `"${w}" not found`, ok ? 'ok' : 'err');
+});
+
+bulkBtn.addEventListener('click', () => {
+  const words = bulkInput.value.split(',').map(w => w.trim()).filter(Boolean);
+  if (!words.length) return;
+  let added = 0;
+  words.forEach(w => { const r = trie.insert(w); if (r.ok && r.added) added++; });
+  bulkInput.value = '';
+  renderChips();
+  renderSuggestions(searchInput.value.trim());
+  renderTrie();
+  showToast(`✓ bulk added ${added} word(s)`);
+});
+
+bulkInput.addEventListener('keydown', e => { if (e.key === 'Enter') bulkBtn.click(); });
+
+/* ===================================================
+   TRIE SVG VISUALIZER
+=================================================== */
+function renderTrie() {
+  const RADIUS = 18;
+  const VGAP   = 60;
+  const HUNIT  = 42;
+  const PADTOP = 30;
+
+  const prefix = searchInput.value.toLowerCase().trim();
+
+  // Measure subtree widths
+  function measure(node) {
+    const chs = Object.keys(node.children).sort();
+    if (!chs.length) return { w: 1, sub: {} };
+    let total = 0;
+    const sub = {};
+    for (const ch of chs) {
+      const m = measure(node.children[ch]);
+      sub[ch] = m;
+      total += m.w;
+    }
+    return { w: Math.max(1, total), sub };
+  }
+
+  const layout = measure(trie.root);
+  const totalW = Math.max(layout.w * HUNIT + 60, 300);
+
+  const nodes = [], edges = [];
+  let maxDepth = 0;
+
+  function walk(node, lyt, x, y, path, depth) {
+    maxDepth = Math.max(maxDepth, depth);
+    const onPath    = prefix.length > 0 && prefix.startsWith(path) && path.length <= prefix.length;
+    const isHighlit = onPath;
+    nodes.push({ x, y, label: path ? path.slice(-1) : '⊙', isEnd: node.isEnd, hl: isHighlit, path });
+
+    const chs = Object.keys(node.children).sort();
+    if (!chs.length) return;
+    let cx = x - (lyt.w * HUNIT) / 2;
+    for (const ch of chs) {
+      const sub  = lyt.sub[ch] || { w: 1, sub: {} };
+      const cw   = sub.w * HUNIT;
+      const childX = cx + cw / 2;
+      const childY = y + VGAP;
+      const edgeHl = onPath && prefix[path.length] === ch;
+      edges.push({ x1: x, y1: y, x2: childX, y2: childY, hl: edgeHl });
+      walk(node.children[ch], sub, childX, childY, path + ch, depth + 1);
+      cx += cw;
+    }
+  }
+
+  walk(trie.root, layout, totalW / 2, PADTOP, '', 0);
+
+  const svgH = Math.max(160, (maxDepth + 1) * VGAP + PADTOP + 20);
+  trieSvg.setAttribute('width',  totalW);
+  trieSvg.setAttribute('height', svgH);
+  trieSvg.setAttribute('viewBox', `0 0 ${totalW} ${svgH}`);
+
+  // Colors
+  const C = {
+    edge:     '#30363d',
+    edgeHL:   '#1D9E75',
+    node:     '#21262d',
+    nodeHL:   '#0d2d22',
+    ring:     '#30363d',
+    ringHL:   '#1D9E75',
+    text:     '#8b949e',
+    textHL:   '#5DCAA5',
+    endDot:   '#1D9E75',
+    endRing:  '#0F6E56',
+  };
+
+  let svg = `<defs>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="${C.edge}" />
+    </marker>
+  </defs>`;
+
+  // Edges
+  for (const e of edges) {
+    const len   = Math.hypot(e.x2 - e.x1, e.y2 - e.y1);
+    const ux    = (e.x2 - e.x1) / len;
+    const uy    = (e.y2 - e.y1) / len;
+    const x1e   = e.x1 + ux * RADIUS;
+    const y1e   = e.y1 + uy * RADIUS;
+    const x2e   = e.x2 - ux * RADIUS;
+    const y2e   = e.y2 - uy * RADIUS;
+    svg += `<line x1="${x1e.toFixed(1)}" y1="${y1e.toFixed(1)}" x2="${x2e.toFixed(1)}" y2="${y2e.toFixed(1)}"
+      stroke="${e.hl ? C.edgeHL : C.edge}" stroke-width="${e.hl ? 2.5 : 1}"
+      opacity="${e.hl ? 1 : 0.45}" stroke-dasharray="${e.hl ? 'none' : '4,3'}"/>`;
+  }
+
+  // Nodes
+  for (const n of nodes) {
+    const fill   = n.hl ? C.nodeHL : C.node;
+    const stroke = n.hl ? C.ringHL : C.ring;
+    const sw     = n.hl ? 2.5 : 1;
+    const tc     = n.hl ? C.textHL : C.text;
+    const op     = n.hl ? 1 : 0.55;
+
+    svg += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${RADIUS}"
+      fill="${fill}" stroke="${stroke}" stroke-width="${sw}" opacity="${op}"/>`;
+
+    if (n.isEnd) {
+      svg += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${RADIUS - 5}"
+        fill="none" stroke="${C.endDot}" stroke-width="1.5" opacity="${op}"/>`;
+    }
+
+    svg += `<text x="${n.x.toFixed(1)}" y="${(n.y + 5).toFixed(1)}"
+      text-anchor="middle" font-size="12" font-weight="${n.hl ? 700 : 400}"
+      fill="${tc}" opacity="${op}"
+      font-family="'JetBrains Mono',monospace">${n.label}</text>`;
+  }
+
+  trieSvg.innerHTML = svg;
+}
+
+/* ===================================================
+   INIT
+=================================================== */
+renderChips();
+renderSuggestions('');
+renderTrie();
+updateStats(0);
+</script>
+</body>
+</html>
